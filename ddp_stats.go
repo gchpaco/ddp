@@ -3,8 +3,7 @@ package ddp
 import (
 	"encoding/hex"
 	"io"
-	"log"
-	"os"
+	"github.com/Sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -60,12 +59,12 @@ type Logger struct {
 	// Truncate is >0 to indicate the number of characters to truncate output
 	Truncate int
 
-	logger *log.Logger
+	logger *logrus.Entry
 	dtype  int
 }
 
 // NewLogger creates a new i/o logger.
-func NewLogger(logger *log.Logger, active bool, dataType int, truncate int) Logger {
+func NewLogger(logger *logrus.Entry, active bool, dataType int, truncate int) Logger {
 	return Logger{logger: logger, Active: active, dtype: dataType, Truncate: truncate}
 }
 
@@ -105,19 +104,17 @@ type ReaderLogger struct {
 // NewReaderDataLogger creates an active binary data logger with a default
 // log.Logger and a '->' prefix.
 func NewReaderDataLogger(reader io.Reader) *ReaderLogger {
-	logger := log.New(os.Stdout, "<- ", log.LstdFlags)
-	return NewReaderLogger(reader, logger, true, DataByte, 0)
+	return NewReaderLogger(reader, log.WithField("direction", "read"), true, DataByte, 0)
 }
 
 // NewReaderTextLogger creates an active binary data logger with a default
 // log.Logger and a '->' prefix.
 func NewReaderTextLogger(reader io.Reader) *ReaderLogger {
-	logger := log.New(os.Stdout, "<- ", log.LstdFlags)
-	return NewReaderLogger(reader, logger, true, DataText, 80)
+	return NewReaderLogger(reader, log.WithField("direction", "read"), true, DataText, 80)
 }
 
 // NewReaderLogger creates a Reader logger for the provided parameters.
-func NewReaderLogger(reader io.Reader, logger *log.Logger, active bool, dataType int, truncate int) *ReaderLogger {
+func NewReaderLogger(reader io.Reader, logger *logrus.Entry, active bool, dataType int, truncate int) *ReaderLogger {
 	return &ReaderLogger{ReaderProxy: *NewReaderProxy(reader), Logger: NewLogger(logger, active, dataType, truncate)}
 }
 
@@ -137,19 +134,17 @@ type WriterLogger struct {
 // NewWriterDataLogger creates an active binary data logger with a default
 // log.Logger and a '->' prefix.
 func NewWriterDataLogger(writer io.Writer) *WriterLogger {
-	logger := log.New(os.Stdout, "-> ", log.LstdFlags)
-	return NewWriterLogger(writer, logger, true, DataByte, 0)
+	return NewWriterLogger(writer, log.WithField("direction", "write"), true, DataByte, 0)
 }
 
 // NewWriterTextLogger creates an active binary data logger with a default
 // log.Logger and a '->' prefix.
 func NewWriterTextLogger(writer io.Writer) *WriterLogger {
-	logger := log.New(os.Stdout, "-> ", log.LstdFlags)
-	return NewWriterLogger(writer, logger, true, DataText, 80)
+	return NewWriterLogger(writer, log.WithField("direction", "write"), true, DataText, 80)
 }
 
 // NewWriterLogger creates a Reader logger for the provided parameters.
-func NewWriterLogger(writer io.Writer, logger *log.Logger, active bool, dataType int, truncate int) *WriterLogger {
+func NewWriterLogger(writer io.Writer, logger *logrus.Entry, active bool, dataType int, truncate int) *WriterLogger {
 	return &WriterLogger{WriterProxy: *NewWriterProxy(writer), Logger: NewLogger(logger, active, dataType, truncate)}
 }
 

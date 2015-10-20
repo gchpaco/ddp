@@ -2,7 +2,6 @@ package ddp
 
 import (
 	"fmt"
-	"log"
 )
 
 // ----------------------------------------------------------------------
@@ -167,19 +166,21 @@ type KeyCache struct {
 }
 
 func (c *KeyCache) added(msg map[string]interface{}) {
-	log.Println("added", msg)
+	context := log.WithField("message", msg).WithField("collection", c.Name)
+	context.Debug("added")
 	id := idForMessage(msg)
 	c.items[id] = msg["fields"]
 	// TODO(badslug): change notification should include change type
 	for _, listener := range c.listeners {
-		log.Println("notifying listener", listener)
+		context.WithField("listener", listener).Debug("notifying listener")
 		listener <- msg
 	}
-	log.Println("added done")
+	context.Debug("added done")
 }
 
 func (c *KeyCache) changed(msg map[string]interface{}) {
-	log.Println("changed", msg)
+	context := log.WithField("message", msg).WithField("collection", c.Name)
+	context.Debug("changed")
 	id := idForMessage(msg)
 	item, ok := c.items[id]
 	if ok {
@@ -204,10 +205,10 @@ func (c *KeyCache) changed(msg map[string]interface{}) {
 		c.items[id] = msg["fields"]
 	}
 	for _, listener := range c.listeners {
-		log.Println("notifying listener", listener)
+		context.WithField("listener", listener).Debug("notifying listener")
 		listener <- msg
 	}
-	log.Println("changed done")
+	context.Debug("changed done")
 }
 
 func (c *KeyCache) removed(msg map[string]interface{}) {

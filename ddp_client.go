@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"golang.org/x/net/websocket"
@@ -149,7 +148,7 @@ func (c *Client) Reconnect() {
 	// Reconnect
 	ws, err := websocket.Dial(c.url, "", c.origin)
 	if err != nil {
-		log.Println("Dial error", err)
+		log.Warn("Dial error", err)
 		// Reconnect again after set interval
 		time.AfterFunc(c.ReconnectInterval, c.Reconnect)
 		return
@@ -165,13 +164,13 @@ func (c *Client) Reconnect() {
 	// Send calls that haven't been confirmed - may not have been sent
 	// and effects should be idempotent
 	for _, call := range c.calls {
-		log.Println("resending inflight method", call.ServiceMethod)
+		log.WithField("method", call.ServiceMethod).Info("resending inflight method")
 		c.Send(NewMethod(call.ID, call.ServiceMethod, call.Args.([]interface{})))
 	}
 
 	// Resend subscriptions and patch up collections
 	for _, sub := range c.subs {
-		log.Println("restarting active subscription", sub.ServiceMethod)
+		log.WithField("method", sub.ServiceMethod).Info("restarting active subscription")
 		c.Send(NewSub(sub.ID, sub.ServiceMethod, sub.Args.([]interface{})))
 	}
 	// Patching up the collections right now is just resetting them. There
@@ -289,7 +288,7 @@ func (c *Client) PingPong(id string, timeout time.Duration, handler func(error))
 // Send transmits messages to the server. The msg parameter must be json
 // encoder compatible.
 func (c *Client) Send(msg interface{}) error {
-	log.Println("send", msg)
+	log.WithField("message", msg).Debug("send")
 	return c.encoder.Encode(msg)
 }
 
@@ -388,7 +387,7 @@ func (c *Client) inboxManager() {
 	for {
 		select {
 		case msg := <-c.inbox:
-			log.Println("inbox", msg)
+			log.WithField("message", msg).Info("inbox")
 			// Message!
 			mtype, ok := msg["msg"]
 			if ok {
@@ -404,7 +403,7 @@ func (c *Client) inboxManager() {
 						c.pingTimer.Reset(c.HeartbeatInterval)
 					})
 				case "failed":
-					log.Fatalf("IM Failed to connect, we support version 1 but server supports %s", msg["version"])
+					log.WithField("version", msg["version"]).Fatal("IM Failed to connect, we only support version 1")
 
 				// Heartbeats
 				case "ping":
@@ -436,7 +435,7 @@ func (c *Client) inboxManager() {
 
 				// Live Data
 				case "nosub":
-					log.Println("Subscription returned a nosub error", msg)
+					log.WithField("message", msg).Info("Subscription returned a nosub error")
 					// Clear related subscriptions=
 					sub, ok := msg["id"]
 					if ok {
@@ -483,7 +482,7 @@ func (c *Client) inboxManager() {
 
 				default:
 					// Ignore?
-					log.Println("Server sent unexpected message", msg)
+					log.WithField("message", msg).Warn("Server sent unexpected message")
 				}
 			} else {
 				// Current Meteor server sends an undocumented DDP message
@@ -495,14 +494,14 @@ func (c *Client) inboxManager() {
 					case string:
 						c.serverID = ID
 					default:
-						log.Println("Server cluster node", serverID)
+						log.WithField("server_id", serverID).Warn("Server cluster node")
 					}
 				} else {
-					log.Println("Server sent message with no `msg` field", msg)
+					log.WithField("message", msg).Warn("Server sent message with no `msg` field")
 				}
 			}
 		case err := <-c.errors:
-			log.Println("Websocket error", err)
+			log.Error("Websocket error", err)
 		}
 	}
 }
@@ -536,7 +535,7 @@ func (c *Client) inboxWorker(ws io.Reader) {
 			c.pingTimer.Reset(c.HeartbeatInterval)
 		}
 		if event == nil {
-			log.Println("Inbox worker found nil event. May be due to broken websocket. Reconnecting.")
+			log.Warn("Inbox worker found nil event. May be due to broken websocket. Reconnecting.")
 			break
 		} else {
 			c.inbox <- event.(map[string]interface{})

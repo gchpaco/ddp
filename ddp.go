@@ -7,13 +7,16 @@ package ddp
 
 import (
 	"fmt"
-	"log"
+	"github.com/Sirupsen/logrus"
 	"sync"
 	"time"
 )
 
-// debugLog is true if we should log debugging information about the connection
-var debugLog = true
+var log = logrus.New()
+
+func init() {
+	log.Level = logrus.WarnLevel
+}
 
 // The main file contains common utility types.
 
@@ -72,8 +75,6 @@ func (call *Call) done() {
 	default:
 		// We don't want to block here.  It is the caller's responsibility to make
 		// sure the channel has enough buffer space. See comment in Go().
-		if debugLog {
-			log.Println("rpc: discarding Call reply due to insufficient Done chan capacity")
-		}
+		log.Debug("rpc: discarding Call reply due to insufficient Done chan capacity")
 	}
 }
