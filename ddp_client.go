@@ -120,7 +120,7 @@ func (c *Client) Reconnect() {
 	// Reconnect
 	ws, err := websocket.Dial(c.url, "", c.origin)
 	if err != nil {
-		log.Warn("Dial error", err)
+		log.WithField("target", c.url).WithField("origin", c.origin).WithError(err).Warn("Dial error")
 		// Reconnect again after set interval
 		time.AfterFunc(c.ReconnectInterval, c.Reconnect)
 		return
@@ -431,7 +431,7 @@ func (c *Client) inboxManager() {
 				}
 			}
 		case err := <-c.errors:
-			log.Error("Websocket error", err)
+			log.WithField("target", c.url).WithField("origin", c.origin).WithError(err).Error("Websocket error")
 		}
 	}
 }
@@ -452,6 +452,7 @@ func (c *Client) collectionBy(msg map[string]interface{}) Collection {
 // inboxWorker pulls messages from a websocket, decodes JSON packets, and
 // stuffs them into a message channel.
 func (c *Client) inboxWorker(ws io.Reader) {
+	context := log.WithField("reconnects", c.reconnects).WithField("target", c.url).WithField("source", c.origin)
 	dec := json.NewDecoder(ws)
 	for {
 		var event interface{}
@@ -465,7 +466,7 @@ func (c *Client) inboxWorker(ws io.Reader) {
 			c.pingTimer.Reset(c.HeartbeatInterval)
 		}
 		if event == nil {
-			log.Warn("Inbox worker found nil event. May be due to broken websocket. Reconnecting.")
+			context.Warn("Inbox worker found nil event. May be due to broken websocket. Reconnecting.")
 			break
 		} else {
 			c.inbox <- event.(map[string]interface{})
