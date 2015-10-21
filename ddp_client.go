@@ -297,8 +297,10 @@ func (c *Client) Close() {
 	// Shutdown out all outstanding pings
 	c.pingTimer.Stop()
 	// Close websocket
-	c.ws.Close()
-	c.ws = nil
+	if c.ws != nil {
+		c.ws.Close()
+		c.ws = nil
+	}
 }
 
 // ResetStats resets the statistics for the client.
