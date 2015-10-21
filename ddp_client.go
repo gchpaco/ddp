@@ -348,6 +348,18 @@ func (c *Client) CollectionByName(name string) Collection {
 	return collection
 }
 
+// CollectionByNameWithDefault retrieves a collection by it's name,
+// and if one did not exist defaults to the one returned by the given
+// function.
+func (c *Client) CollectionByNameWithDefault(name string, makeDefault func(string) Collection) Collection {
+	collection, ok := c.collections[name]
+	if !ok {
+		collection = makeDefault(name)
+		c.collections[name] = collection
+	}
+	return collection
+}
+
 // ClientStats displays combined statistics for the Client.
 type ClientStats struct {
 	// Reads provides statistics on the raw i/o network reads for the current connection.
