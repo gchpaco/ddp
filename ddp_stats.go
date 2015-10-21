@@ -2,8 +2,8 @@ package ddp
 
 import (
 	"encoding/hex"
-	"io"
 	"github.com/Sirupsen/logrus"
+	"io"
 	"sync"
 	"time"
 )
