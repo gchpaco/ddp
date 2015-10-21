@@ -137,11 +137,11 @@ type Collection interface {
 
 	// livedata updates
 
-	added(msg map[string]interface{})
-	changed(msg map[string]interface{})
-	removed(msg map[string]interface{})
-	addedBefore(msg map[string]interface{})
-	movedBefore(msg map[string]interface{})
+	Added(msg map[string]interface{})
+	Changed(msg map[string]interface{})
+	Removed(msg map[string]interface{})
+	AddedBefore(msg map[string]interface{})
+	MovedBefore(msg map[string]interface{})
 }
 
 // NewMockCollection creates an empty collection that does nothing.
@@ -165,9 +165,9 @@ type KeyCache struct {
 	// TODO(badslug): do we need to protect from multiple threads
 }
 
-func (c *KeyCache) added(msg map[string]interface{}) {
+func (c *KeyCache) Added(msg map[string]interface{}) {
 	context := log.WithField("message", msg).WithField("collection", c.Name)
-	context.Debug("added")
+	context.Debug("Added")
 	id := idForMessage(msg)
 	c.items[id] = msg["fields"]
 	// TODO(badslug): change notification should include change type
@@ -175,12 +175,12 @@ func (c *KeyCache) added(msg map[string]interface{}) {
 		context.WithField("listener", listener).Debug("notifying listener")
 		listener <- msg
 	}
-	context.Debug("added done")
+	context.Debug("Added done")
 }
 
-func (c *KeyCache) changed(msg map[string]interface{}) {
+func (c *KeyCache) Changed(msg map[string]interface{}) {
 	context := log.WithField("message", msg).WithField("collection", c.Name)
-	context.Debug("changed")
+	context.Debug("Changed")
 	id := idForMessage(msg)
 	item, ok := c.items[id]
 	if ok {
@@ -208,19 +208,19 @@ func (c *KeyCache) changed(msg map[string]interface{}) {
 		context.WithField("listener", listener).Debug("notifying listener")
 		listener <- msg
 	}
-	context.Debug("changed done")
+	context.Debug("Changed done")
 }
 
-func (c *KeyCache) removed(msg map[string]interface{}) {
+func (c *KeyCache) Removed(msg map[string]interface{}) {
 	id := idForMessage(msg)
 	delete(c.items, id)
 }
 
-func (c *KeyCache) addedBefore(msg map[string]interface{}) {
+func (c *KeyCache) AddedBefore(msg map[string]interface{}) {
 	// for keyed cache, ordered commands are a noop
 }
 
-func (c *KeyCache) movedBefore(msg map[string]interface{}) {
+func (c *KeyCache) MovedBefore(msg map[string]interface{}) {
 	// for keyed cache, ordered commands are a noop
 }
 
@@ -247,23 +247,23 @@ type OrderedCache struct {
 	items []interface{}
 }
 
-func (c *OrderedCache) added(msg map[string]interface{}) {
+func (c *OrderedCache) Added(msg map[string]interface{}) {
 	// for ordered cache, key commands are a noop
 }
 
-func (c *OrderedCache) changed(msg map[string]interface{}) {
+func (c *OrderedCache) Changed(msg map[string]interface{}) {
 
 }
 
-func (c *OrderedCache) removed(msg map[string]interface{}) {
+func (c *OrderedCache) Removed(msg map[string]interface{}) {
 
 }
 
-func (c *OrderedCache) addedBefore(msg map[string]interface{}) {
+func (c *OrderedCache) AddedBefore(msg map[string]interface{}) {
 
 }
 
-func (c *OrderedCache) movedBefore(msg map[string]interface{}) {
+func (c *OrderedCache) MovedBefore(msg map[string]interface{}) {
 
 }
 
@@ -285,23 +285,23 @@ func (c *OrderedCache) AddUpdateListener(ch chan<- map[string]interface{}) {
 type MockCache struct {
 }
 
-func (c *MockCache) added(msg map[string]interface{}) {
+func (c *MockCache) Added(msg map[string]interface{}) {
 
 }
 
-func (c *MockCache) changed(msg map[string]interface{}) {
+func (c *MockCache) Changed(msg map[string]interface{}) {
 
 }
 
-func (c *MockCache) removed(msg map[string]interface{}) {
+func (c *MockCache) Removed(msg map[string]interface{}) {
 
 }
 
-func (c *MockCache) addedBefore(msg map[string]interface{}) {
+func (c *MockCache) AddedBefore(msg map[string]interface{}) {
 
 }
 
-func (c *MockCache) movedBefore(msg map[string]interface{}) {
+func (c *MockCache) MovedBefore(msg map[string]interface{}) {
 
 }
 

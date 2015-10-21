@@ -467,15 +467,15 @@ func (c *Client) inboxManager() {
 						}
 					}
 				case "added":
-					c.collectionBy(msg).added(msg)
+					c.collectionBy(msg).Added(msg)
 				case "changed":
-					c.collectionBy(msg).changed(msg)
+					c.collectionBy(msg).Changed(msg)
 				case "removed":
-					c.collectionBy(msg).removed(msg)
+					c.collectionBy(msg).Removed(msg)
 				case "addedBefore":
-					c.collectionBy(msg).addedBefore(msg)
+					c.collectionBy(msg).AddedBefore(msg)
 				case "movedBefore":
-					c.collectionBy(msg).movedBefore(msg)
+					c.collectionBy(msg).MovedBefore(msg)
 
 				// RPC
 				case "result":
