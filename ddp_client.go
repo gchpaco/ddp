@@ -19,24 +19,8 @@ type Client struct {
 	// ReconnectInterval is the time between reconnections on bad connections
 	ReconnectInterval time.Duration
 
-	// writeStats controls statistics gathering for current websocket writes.
-	writeSocketStats *WriterStats
-	// writeStats controls statistics gathering for overall client writes.
-	writeStats *WriterStats
-	// writeLog controls logging for client writes.
-	writeLog *WriterLogger
-	// readStats controls statistics gathering for current websocket reads.
-	readSocketStats *ReaderStats
-	// readStats controls statistics gathering for overall client reads.
-	readStats *ReaderStats
-	// readLog control logging for clietn reads.
-	readLog *ReaderLogger
 	// reconnects in the number of reconnections the client has made
 	reconnects int64
-	// pingsIn is the number of pings received from the server
-	pingsIn int64
-	// pingsOut is te number of pings sent by the client
-	pingsOut int64
 
 	// session contains the DDP session token (can be used for reconnects and debugging).
 	session string
@@ -100,20 +84,8 @@ func NewClient(url, origin string) (*Client, error) {
 		calls:             map[string]*Call{},
 		subs:              map[string]*Call{},
 
-		// Stats
-		writeSocketStats: NewWriterStats(nil),
-		writeStats:       NewWriterStats(nil),
-		readSocketStats:  NewReaderStats(nil),
-		readStats:        NewReaderStats(nil),
-
-		// Loggers
-		writeLog: NewWriterTextLogger(nil),
-		readLog:  NewReaderTextLogger(nil),
-
 		idManager: *newidManager(),
 	}
-	c.encoder = json.NewEncoder(c.writeStats)
-	c.SetSocketLogActive(false)
 
 	// We spin off an inbox processing goroutine
 	go c.inboxManager()
@@ -274,7 +246,6 @@ func (c *Client) PingPong(id string, timeout time.Duration, handler func(error))
 		handler(err)
 		return
 	}
-	c.pingsOut++
 	pings, ok := c.pings[id]
 	if !ok {
 		pings = make([]*pingTracker, 0, 5)
@@ -305,37 +276,7 @@ func (c *Client) Close() {
 
 // ResetStats resets the statistics for the client.
 func (c *Client) ResetStats() {
-	c.readSocketStats.Reset()
-	c.readStats.Reset()
-	c.writeSocketStats.Reset()
-	c.writeStats.Reset()
 	c.reconnects = 0
-	c.pingsIn = 0
-	c.pingsOut = 0
-}
-
-// Stats returns the read and write statistics of the client.
-func (c *Client) Stats() *ClientStats {
-	return &ClientStats{
-		Reads:       c.readSocketStats.Snapshot(),
-		TotalReads:  c.readStats.Snapshot(),
-		Writes:      c.writeSocketStats.Snapshot(),
-		TotalWrites: c.writeStats.Snapshot(),
-		Reconnects:  c.reconnects,
-		PingsSent:   c.pingsOut,
-		PingsRecv:   c.pingsIn,
-	}
-}
-
-// SocketLogActive returns the current logging status for the socket.
-func (c *Client) SocketLogActive() bool {
-	return c.writeLog.Active
-}
-
-// SetSocketLogActive to true to enable logging of raw socket data.
-func (c *Client) SetSocketLogActive(active bool) {
-	c.writeLog.Active = active
-	c.readLog.Active = active
 }
 
 // CollectionByName retrieves a collection by it's name.
@@ -360,37 +301,13 @@ func (c *Client) CollectionByNameWithDefault(name string, makeDefault func(strin
 	return collection
 }
 
-// ClientStats displays combined statistics for the Client.
-type ClientStats struct {
-	// Reads provides statistics on the raw i/o network reads for the current connection.
-	Reads *Stats
-	// Reads provides statistics on the raw i/o network reads for the all client connections.
-	TotalReads *Stats
-	// Writes provides statistics on the raw i/o network writes for the current connection.
-	Writes *Stats
-	// Writes provides statistics on the raw i/o network writes for all the client connections.
-	TotalWrites *Stats
-	// Reconnects is the number of reconnections the client has made.
-	Reconnects int64
-	// PingsSent is the number of pings sent by the client
-	PingsSent int64
-	// PingsRecv is the number of pings received by the client
-	PingsRecv int64
-}
-
 // start starts a new client connection on the provided websocket
 func (c *Client) start(ws *websocket.Conn, connect *Connect) {
-
 	c.ws = ws
-	c.writeLog.SetWriter(ws)
-	c.writeSocketStats = NewWriterStats(c.writeLog)
-	c.writeStats.SetWriter(c.writeSocketStats)
-	c.readLog.SetReader(ws)
-	c.readSocketStats = NewReaderStats(c.readLog)
-	c.readStats.SetReader(c.readSocketStats)
+	c.encoder = json.NewEncoder(ws)
 
 	// We spin off an inbox stuffing goroutine
-	go c.inboxWorker(c.readStats)
+	go c.inboxWorker(ws)
 
 	c.Send(connect)
 }
@@ -428,7 +345,6 @@ func (c *Client) inboxManager() {
 					} else {
 						c.Send(NewPong(""))
 					}
-					c.pingsIn++
 				case "pong":
 					// We received a pong - we can clear the ping tracker and call its handler
 					id, ok := msg["id"]
@@ -556,8 +472,8 @@ func (c *Client) inboxWorker(ws io.Reader) {
 		}
 	}
 
+	c.Close()
+
 	// Spawn a reconnect
-	time.AfterFunc(3*time.Second, func() {
-		c.Reconnect()
-	})
+	time.AfterFunc(c.ReconnectInterval, c.Reconnect)
 }
