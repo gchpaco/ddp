@@ -259,7 +259,11 @@ func (c *Client) PingPong(id string, timeout time.Duration, handler func(error))
 // encoder compatible.
 func (c *Client) Send(msg interface{}) error {
 	log.WithField("message", msg).Debug("send")
-	return websocket.JSON.Send(c.ws, msg)
+	if c.ws == nil {
+		return fmt.Errorf("Tried to send message on a nil socket")
+	} else {
+		return websocket.JSON.Send(c.ws, msg)
+	}
 }
 
 // Close implements the io.Closer interface.
@@ -328,8 +332,10 @@ func (c *Client) inboxManager() {
 					c.session = msg["session"].(string)
 					// Start automatic heartbeats
 					c.pingTimer = time.AfterFunc(c.HeartbeatInterval, func() {
-						c.Ping()
-						c.pingTimer.Reset(c.HeartbeatInterval)
+						if c.ws != nil {
+							c.Ping()
+							c.pingTimer.Reset(c.HeartbeatInterval)
+						}
 					})
 				case "failed":
 					log.WithField("version", msg["version"]).Fatal("IM Failed to connect, we only support version 1")
@@ -344,6 +350,7 @@ func (c *Client) inboxManager() {
 						c.Send(NewPong(""))
 					}
 				case "pong":
+					// XXX WEIRD
 					// We received a pong - we can clear the ping tracker and call its handler
 					id, ok := msg["id"]
 					var key string
@@ -396,14 +403,16 @@ func (c *Client) inboxManager() {
 					id, ok := msg["id"]
 					if ok {
 						call := c.calls[id.(string)]
-						delete(c.calls, id.(string))
-						e, ok := msg["error"]
-						if ok {
-							call.Error = fmt.Errorf(e.(string))
-						} else {
-							call.Reply = msg["result"]
+						if call != nil {
+							delete(c.calls, id.(string))
+							e, ok := msg["error"]
+							if ok {
+								call.Error = fmt.Errorf(e.(string))
+							} else {
+								call.Reply = msg["result"]
+							}
+							call.done()
 						}
-						call.done()
 					}
 				case "updated":
 					// We currently don't do anything with updated status
