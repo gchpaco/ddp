@@ -61,13 +61,13 @@ type pingTracker struct {
 
 // Call represents an active RPC call.
 type Call struct {
-	ID            string      // The uuid for this method call
-	ServiceMethod string      // The name of the service and method to call.
-	Args          interface{} // The argument to the function (*struct).
-	Reply         interface{} // The reply from the function (*struct).
-	Error         error       // After completion, the error status.
-	Done          chan *Call  // Strobes when call is complete.
-	Owner         *Client     // Client that owns the method call
+	ID            string        // The uuid for this method call
+	ServiceMethod string        // The name of the service and method to call.
+	Args          []interface{} // The argument to the function (*struct).
+	Reply         interface{}   // The reply from the function (*struct).
+	Error         error         // After completion, the error status.
+	Done          chan *Call    // Strobes when call is complete.
+	Owner         *Client       // Client that owns the method call
 }
 
 // done removes the call from any owners and strobes the done channel with itself.

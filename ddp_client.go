@@ -134,13 +134,13 @@ func (c *Client) Reconnect() {
 	// and effects should be idempotent
 	for _, call := range c.calls {
 		log.WithField("method", call.ServiceMethod).Info("resending inflight method")
-		c.Send(NewMethod(call.ID, call.ServiceMethod, call.Args.([]interface{})))
+		c.Send(NewMethod(call.ID, call.ServiceMethod, call.Args))
 	}
 
 	// Resend subscriptions and patch up collections
 	for _, sub := range c.subs {
 		log.WithField("method", sub.ServiceMethod).Info("restarting active subscription")
-		c.Send(NewSub(sub.ID, sub.ServiceMethod, sub.Args.([]interface{})))
+		c.Send(NewSub(sub.ID, sub.ServiceMethod, sub.Args))
 	}
 	// Patching up the collections right now is just resetting them. There
 	// must be a better way but this is quick and works.
