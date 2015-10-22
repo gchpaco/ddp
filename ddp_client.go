@@ -1,7 +1,6 @@
 package ddp
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -30,8 +29,6 @@ type Client struct {
 	serverID string
 	// ws is the underlying websocket being used.
 	ws *websocket.Conn
-	// encoder is a JSON encoder to send outgoing packets to the websocket.
-	encoder *json.Encoder
 	// url the URL the websocket is connected to
 	url string
 	// origin is the origin for the websocket connection
@@ -260,7 +257,7 @@ func (c *Client) PingPong(id string, timeout time.Duration, handler func(error))
 // encoder compatible.
 func (c *Client) Send(msg interface{}) error {
 	log.WithField("message", msg).Debug("send")
-	return c.encoder.Encode(msg)
+	return websocket.JSON.Send(c.ws, msg)
 }
 
 // Close implements the io.Closer interface.
@@ -304,7 +301,6 @@ func (c *Client) CollectionByNameWithDefault(name string, makeDefault func(strin
 // start starts a new client connection on the provided websocket
 func (c *Client) start(ws *websocket.Conn, connect *Connect) {
 	c.ws = ws
-	c.encoder = json.NewEncoder(ws)
 
 	// We spin off an inbox stuffing goroutine
 	go c.inboxWorker(ws)
@@ -451,23 +447,22 @@ func (c *Client) collectionBy(msg map[string]interface{}) Collection {
 
 // inboxWorker pulls messages from a websocket, decodes JSON packets, and
 // stuffs them into a message channel.
-func (c *Client) inboxWorker(ws io.Reader) {
+func (c *Client) inboxWorker(ws *websocket.Conn) {
 	context := log.WithField("reconnects", c.reconnects).WithField("target", c.url).WithField("source", c.origin)
-	dec := json.NewDecoder(ws)
 	for {
 		var event interface{}
 
-		if err := dec.Decode(&event); err == io.EOF {
+		if err := websocket.JSON.Receive(ws, &event); err != nil {
+			if err != io.EOF {
+				c.errors <- err
+			}
 			break
-		} else if err != nil {
-			c.errors <- err
 		}
 		if c.pingTimer != nil {
 			c.pingTimer.Reset(c.HeartbeatInterval)
 		}
 		if event == nil {
-			context.Warn("Inbox worker found nil event. May be due to broken websocket. Reconnecting.")
-			break
+			context.Warn("Inbox worker found nil event.  Unclear why, as an error should have been triggered.")
 		} else {
 			c.inbox <- event.(map[string]interface{})
 		}
