@@ -142,6 +142,9 @@ type Collection interface {
 	Removed(msg map[string]interface{})
 	AddedBefore(msg map[string]interface{})
 	MovedBefore(msg map[string]interface{})
+
+	// for reconnects
+	Reset()
 }
 
 // NewMockCollection creates an empty collection that does nothing.
@@ -239,6 +242,11 @@ func (c *KeyCache) AddUpdateListener(ch chan<- map[string]interface{}) {
 	c.listeners = append(c.listeners, ch)
 }
 
+// Reset state of the cache.
+func (c *KeyCache) Reset() {
+	c.items = map[string]interface{}{}
+}
+
 // OrderedCache caches items based on list order.
 // This is a placeholder, currently not implemented as the Meteor server
 // does not transmit ordered collections over DDP yet.
@@ -281,6 +289,10 @@ func (c *OrderedCache) FindAll() map[string]interface{} {
 func (c *OrderedCache) AddUpdateListener(ch chan<- map[string]interface{}) {
 }
 
+// Reset does nothing.
+func (c *OrderedCache) Reset() {
+}
+
 // MockCache implements the Collection interface but does nothing with the data.
 type MockCache struct {
 }
@@ -317,6 +329,10 @@ func (c *MockCache) FindAll() map[string]interface{} {
 
 // AddUpdateListener does nothing.
 func (c *MockCache) AddUpdateListener(ch chan<- map[string]interface{}) {
+}
+
+// Reset does nothing.
+func (c *MockCache) Reset() {
 }
 
 func idForMessage(msg map[string]interface{}) string {

@@ -144,7 +144,9 @@ func (c *Client) Reconnect() {
 	}
 	// Patching up the collections right now is just resetting them. There
 	// must be a better way but this is quick and works.
-	c.collections = map[string]Collection{}
+	for _, collection := range c.collections {
+		collection.Reset()
+	}
 }
 
 // Subscribe subscribes to data updates.
